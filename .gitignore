@@ -1,0 +1,15 @@
+# Python generated files
+__pycache__/
+*.pyc
+
+# IDE configuration (Prevents sharing personal editor settings)
+.idea/
+.vscode/
+
+# Virtual Environment (Safety measure for local testing)
+.venv/
+venv/
+env/
+
+# Streamlit configuration
+.streamlit/ 
