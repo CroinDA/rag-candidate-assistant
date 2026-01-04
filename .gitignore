@@ -12,4 +12,12 @@ venv/
 env/
 
 # Streamlit configuration
-.streamlit/ 
+.streamlit/
+
+# Cache directories
+cache/
+.cache/
+
+# Vector Store (벡터DB 데이터는 사용자별로 다르므로 제외)
+vector_store/*
+!vector_store/README*.md 
