@@ -1,4 +1,4 @@
-# UI (Streamlit)
+# 웹 UI 기능 구현(By. Streamlit)
 
 import streamlit as st
 import os
@@ -20,7 +20,7 @@ if "vectorstore_ready" not in st.session_state:
 if "uploaded_files_list" not in st.session_state:
     st.session_state["uploaded_files_list"] = []
 
-# 사이드바: 문서 업로드 및 설정
+# 1. 사이드바: 문서 업로드 및 설정
 with st.sidebar:
     st.header("⚙️ 설정")
     
@@ -28,14 +28,14 @@ with st.sidebar:
     st.subheader("📤 문서 업로드")
     
     uploaded_files = st.file_uploader(
-        "PDF 파일을 업로드하세요",
+        "CV 파일(.pdf)을 업로드하세요",
         type=["pdf"],
         accept_multiple_files=True,
         help="여러 개의 PDF 파일을 동시에 업로드할 수 있습니다."
     )
     
     if uploaded_files:
-        if st.button("🚀 업로드한 지원자 문서 처리", type="primary"):
+        if st.button("🚀 업로드한 지원자 CV 처리", type="primary"):
             with st.spinner("문서 처리중..."):
                 try:
                     # 임시 디렉토리에 업로드된 파일 저장
@@ -79,11 +79,11 @@ with st.sidebar:
     
     # 벡터 DB 상태 표시
     st.divider()
-    st.subheader("🗄️ 벡터 DB 상태")
+    st.subheader("🗄️ 지원자 CV 데이터 준비 상태")
     if st.session_state["vectorstore_ready"]:
-        st.success("✅ 벡터 DB 준비 완료")
+        st.success("✅ 준비 완료")
     else:
-        st.warning("⚠️ 벡터 DB가 없습니다. 문서를 업로드해주세요.")
+        st.warning("⚠️ 데이터가 없습니다. 문서를 업로드해주세요.")
     
     # 시스템 정보
     st.divider()
@@ -100,7 +100,7 @@ with st.sidebar:
     )
     
     # 벡터 DB 초기화 버튼
-    if st.button("🗑️ 모든 벡터 DB 초기화"):
+    if st.button("🗑️ 전체 DB 초기화"):
         import shutil
         vector_base_dir = "vector_store"
         if os.path.exists(vector_base_dir):
@@ -112,21 +112,21 @@ with st.sidebar:
             st.success("✅ 모든 벡터 DB가 초기화되었습니다.")
             st.rerun()
 
-# 메인 채팅 영역
+# 2. 메인 채팅 영역
 if not st.session_state["vectorstore_ready"]:
-    st.info("👈 왼쪽 사이드바에서 PDF 문서를 업로드하고 처리해주세요.\n\n💡 파일명은 `{지원자명}_CV.pdf` 형식으로 업로드해주세요. (예: Kyle_CV.pdf, 박광진_CV.pdf)")
+    st.info("👈 왼쪽 사이드바에서 PDF 문서를 업로드하고 처리해주세요.\n\n💡 파일명은 지원자명_CV.pdf 형식으로 업로드해주세요. (예: 박광진_CV.pdf, Oliver_CV.pdf)")
 else:
     # 등록된 지원자 안내
     candidates = get_available_candidates()
     if candidates:
-        st.info(f"💬 질문 시 지원자 이름을 포함해주세요.\n\n등록된 지원자: {', '.join(candidates)}\n\n예시: '{candidates[0]}의 경력을 알려줘'")
+        st.info(f"💬 질문 시 지원자 이름을 포함해주세요.(등록된 지원자 명단은 좌측 사이드바 참조)\n\n예시: '{candidates[0]}의 경력을 알려줘'")
     # 이전 대화 렌더링
     for msg in st.session_state["messages"]:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
     
     # 사용자 입력
-    user_input = st.chat_input("무엇이든 물어보세요...")
+    user_input = st.chat_input("지원자에 관해 궁금한 내용을 질문하세요...")
     
     if user_input:
         # 유저 메시지 저장/표시
@@ -136,7 +136,7 @@ else:
         
         # RAG 호출
         with st.chat_message("assistant"):
-            with st.spinner("🤔 생각하는 중..."):
+            with st.spinner("🤔 챗봇은 생각중..."):
                 try:
                     answer = ask_question(user_input)
                     st.markdown(answer)
