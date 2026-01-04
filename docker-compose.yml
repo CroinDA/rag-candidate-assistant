@@ -1,0 +1,108 @@
+# Docker Compose v2+ (version 필드 불필요)
+
+services:
+  # ============================================
+  # RAG 챗봇 서비스 (CUDA GPU 지원)
+  # ============================================
+  rag-assistant:
+    # 이미지 이름 지정
+    image: rag-candidate-assistant:latest
+    
+    # Dockerfile로 빌드
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    # 컨테이너 이름 (docker ps에서 보이는 이름)
+    container_name: rag-assistant
+    
+    # ⭐ 사용자 권한 매칭 (호스트와 동일한 UID/GID로 실행)
+    # vector_store 파일 권한 문제 해결
+    # Mac/Windows에서는 주석 처리하거나 제거하세요
+    # user: "1000:1000"
+    
+    # 포트 매핑: 호스트:컨테이너
+    # localhost:8501로 접속하면 컨테이너의 8501로 연결
+    ports:
+      - "8501:8501"
+    
+    # 볼륨 마운트 (중요!)
+    # 1. vector_store: 벡터DB를 컨테이너 외부에 저장 (재시작해도 유지)
+    # 2. .cache: HuggingFace 모델 캐시 (재다운로드 방지)
+    volumes:
+      - ./vector_store:/app/vector_store
+      - ./cache:/app/.cache
+    
+    # 환경 변수
+    environment:
+      # Python 설정
+      - PYTHONUNBUFFERED=1
+      
+      # Streamlit 설정
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      
+      # Ollama 호스트 설정 (호스트의 Ollama 서버 사용)
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_MODEL=qwen2.5:14b
+      
+      # GPU 설정
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0
+      
+      # HuggingFace 캐시 설정
+      - HF_HOME=/app/.cache
+      - TRANSFORMERS_CACHE=/app/.cache
+      - SENTENCE_TRANSFORMERS_HOME=/app/.cache
+    
+    # 호스트 네트워크 접근 설정
+    # host.docker.internal: Docker 컨테이너에서 호스트 머신을 가리키는 DNS
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    
+    # GPU 리소스 할당 (NVIDIA GPU 필수)
+    # ⚠️ 사용 조건:
+    # 1. NVIDIA GPU가 있는 Linux 환경
+    # 2. nvidia-docker2 또는 NVIDIA Container Toolkit 설치 필요
+    # 3. Mac (Apple Silicon) 또는 GPU 없는 환경에서는 주석 처리
+    #
+    # 설치 방법 (Ubuntu/Debian):
+    # distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+    # curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+    # curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+    # sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
+    # sudo systemctl restart docker
+    #
+    # GPU 사용을 원하면 아래 주석을 해제하세요:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all  # 모든 GPU 사용 (또는 count: 1로 특정 개수 지정)
+    #           capabilities: [gpu]
+    
+    # 재시작 정책
+    # unless-stopped: 수동으로 중지하지 않는 한 항상 재시작
+    restart: unless-stopped
+    
+    # 헬스체크
+    # 컨테이너가 정상 작동하는지 주기적으로 확인
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# ============================================
+# 네트워크 설정
+# ============================================
+# 나중에 Ollama 같은 다른 서비스를 추가할 때 유용
+networks:
+  default:
+    name: rag-network
+    driver: bridge
+
