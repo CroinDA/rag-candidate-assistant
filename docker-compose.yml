@@ -56,6 +56,9 @@ services:
       - HF_HOME=/app/.cache
       - TRANSFORMERS_CACHE=/app/.cache
       - SENTENCE_TRANSFORMERS_HOME=/app/.cache
+      
+      # ChromaDB 설정 (0.5.x 버전부터, 서버 모드로 실행하지 않기 위한 명시적 지시, 서버 모드 필요시 해당 변수 주석 처리)
+      - CHROMA_SERVER_HOST=localhost
     
     # 호스트 네트워크 접근 설정
     # host.docker.internal: Docker 컨테이너에서 호스트 머신을 가리키는 DNS
