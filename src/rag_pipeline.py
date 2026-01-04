@@ -23,6 +23,10 @@ from ingest import (
 
 load_dotenv()
 
+# ============================================
+# 1. 유틸리티 함수들
+# ============================================
+
 def get_available_candidates() -> List[str]:
     """
     저장된 지원자 목록 반환 (정규화 적용)
@@ -46,6 +50,7 @@ def get_available_candidates() -> List[str]:
             candidates.append(item_normalized)
     
     return candidates
+
 
 def extract_candidate_from_query(query: str) -> str:
     """
@@ -101,6 +106,10 @@ def check_vectorstore_exists() -> bool:
     return len(get_available_candidates()) > 0
 
 
+# ============================================
+# 2. 벡터 스토어 및 Retriever 함수들
+# ============================================
+
 def load_vectorstore(candidate_name: str):
     """
     지원자별 Chroma DB를 로드합니다.
@@ -145,6 +154,10 @@ def get_retriever(candidate_name: str, k: int = 3):
     )
 
 
+# ============================================
+# 3. RAG 체인 구성 함수들
+# ============================================
+
 def format_docs(docs: List[Document]) -> str:
     """
     검색된 문서들을 포맷팅합니다.
@@ -172,16 +185,16 @@ def build_rag_chain(candidate_name: str):
 
     system_prompt = """당신은 지원자의 이력서 정보를 기반으로 답변하는 전문 어시스턴트입니다.
 
-**역할 및 지침:**
-1. 주어진 '지원자 이력서 정보'를 최대한 활용하여 질문에 구체적으로 답변하세요.
-2. 한국어 또는 영어로 자연스럽게 답변하세요.
-3. 정보가 명확하지 않거나 문서에 없는 내용은 추측하지 말고 솔직하게 "해당 정보는 이력서에 없습니다"라고 답변하세요.
-4. 여러 문서에서 관련 정보를 찾았다면, 종합하여 답변하세요.
-5. 가능한 경우 출처(문서명, 페이지)를 언급하세요.
+    **역할 및 지침:**
+    1. 주어진 '지원자 이력서 정보'를 최대한 활용하여 질문에 구체적으로 답변하세요.
+    2. 한국어 또는 영어로 자연스럽게 답변하세요.
+    3. 정보가 명확하지 않거나 문서에 없는 내용은 추측하지 말고 솔직하게 "해당 정보는 이력서에 없습니다"라고 답변하세요.
+    4. 여러 문서에서 관련 정보를 찾았다면, 종합하여 답변하세요.
+    5. 가능한 경우 출처(문서명, 페이지)를 언급하세요.
 
-**지원자 이력서 정보:**
-{context}
-"""
+    **지원자 이력서 정보:**
+    {context}
+    """
 
     user_prompt = "질문: {question}"
 
@@ -213,6 +226,10 @@ def build_rag_chain(candidate_name: str):
     return rag_chain
 
 
+# ============================================
+# 4. 메인 파이프라인
+# ============================================
+
 def ask_question(question: str) -> str:
     """
     질문에 대한 답변을 생성합니다.
@@ -234,18 +251,6 @@ def ask_question(question: str) -> str:
         # 질문에서 지원자 이름 추출
         candidate_name = extract_candidate_from_query(question)
         
-        # 디버깅: 매칭 결과 확인 (개발용, 나중에 제거 가능)
-        if not candidate_name:
-            # 더 정확한 매칭 시도: 질문의 각 단어와 지원자 이름 비교
-            import re
-            question_words = re.findall(r'[\w가-힣]+', question)
-            for word in question_words:
-                # 구두점 제거
-                word_clean = word.strip('.,!?()[]{}"\'').strip()
-                if word_clean in available:
-                    candidate_name = word_clean
-                    break
-        
         if not candidate_name:
             candidates_list = ", ".join(available)
             return f"⚠️ 질문에 지원자 이름을 포함해주세요.\n\n사용 가능한 지원자: {candidates_list}\n\n예시: '{available[0]}의 경력을 알려줘'"
@@ -259,13 +264,3 @@ def ask_question(question: str) -> str:
         return f"⚠️ {str(e)}"
     except Exception as e:
         return f"❌ 답변 생성 중 오류가 발생했습니다: {str(e)}"
-
-
-if __name__ == "__main__":
-    # 테스트
-    if check_vectorstore_exists():
-        q = "이 지원자가 해온 주요 프로젝트와 역할을 요약해줘."
-        print("Q:", q)
-        print("A:", ask_question(q))
-    else:
-        print("⚠️ 벡터 스토어가 없습니다. 먼저 문서를 처리해주세요.")
