@@ -76,28 +76,6 @@ with st.sidebar:
             st.text(f"{idx}. {candidate}")
     else:
         st.info("등록된 지원자가 없습니다.")
-    
-    # 벡터 DB 상태 표시
-    st.divider()
-    st.subheader("🗄️ 지원자 CV 데이터 준비 상태")
-    if st.session_state["vectorstore_ready"]:
-        st.success("✅ 준비 완료")
-    else:
-        st.warning("⚠️ 데이터가 없습니다. 문서를 업로드해주세요.")
-    
-    # 시스템 정보
-    st.divider()
-    st.subheader("ℹ️ 시스템 정보")
-    st.markdown(
-        """
-        - **LLM**: Ollama (qwen2.5:14b)
-        - **임베딩**: HuggingFace MiniLM-L6-v2
-        - **벡터 DB**: ChromaDB
-        - **청크 크기**: 800 (오버랩: 200)
-        - **검색 결과**: Top-3
-        - **GPU**: CUDA 12.1 지원
-        """
-    )
 
 
 # 2. 메인 채팅 영역
