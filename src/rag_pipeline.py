@@ -15,11 +15,12 @@ from langchain_ollama import ChatOllama
 
 # ingest.py에서 공통 함수 import
 from ingest import (
-    CHROMA_BASE_DIR,
     normalize_filename,
     get_chroma_dir,
+    get_candidates_dir,
     get_embeddings
 )
+import chromadb
 
 load_dotenv()
 
@@ -29,27 +30,28 @@ load_dotenv()
 
 def get_available_candidates() -> List[str]:
     """
-    저장된 지원자 목록 반환 (정규화 적용)
+    저장된 지원자 목록 반환 (별도 인덱스 컬렉션에서 추출)
     """
-    if not os.path.exists(CHROMA_BASE_DIR):
+    candidates_dir = get_candidates_dir()
+
+    if not os.path.exists(candidates_dir):
         return []
-    
-    candidates = []
+
     try:
-        items = os.listdir(CHROMA_BASE_DIR)
+        client = chromadb.PersistentClient(path=candidates_dir)
+        collection = client.get_or_create_collection("candidates_index")
+        results = collection.get()
+
+        candidates_set = set()
+        metadatas = results.get("metadatas") or []
+        for md in metadatas:
+            if md and "candidate" in md:
+                candidates_set.add(normalize_filename(md["candidate"]))
+
+        return sorted(list(candidates_set))
     except Exception as e:
-        print(f"  ⚠️ 디렉토리 읽기 실패: {e}")
+        print(f"  ⚠️ 지원자 목록 추출 실패: {e}")
         return []
-    
-    for item in items:
-        candidate_dir = os.path.join(CHROMA_BASE_DIR, item)
-        chroma_db = os.path.join(candidate_dir, "chroma_db")
-        
-        if os.path.isdir(candidate_dir) and os.path.exists(chroma_db):
-            item_normalized = normalize_filename(item)
-            candidates.append(item_normalized)
-    
-    return candidates
 
 
 def extract_candidate_from_query(query: str) -> str:
@@ -110,21 +112,18 @@ def check_vectorstore_exists() -> bool:
 # 2. 벡터 스토어 및 Retriever 함수들
 # ============================================
 
-def load_vectorstore(candidate_name: str):
+def load_vectorstore():
     """
-    지원자별 Chroma DB를 로드합니다.
+    단일 Chroma DB를 로드합니다.
     
-    Args:
-        candidate_name: 지원자 이름
-        
     Returns:
         Chroma 벡터스토어 인스턴스
     """
-    chroma_dir = get_chroma_dir(candidate_name)
+    chroma_dir = get_chroma_dir()
     
     if not os.path.exists(chroma_dir):
         raise FileNotFoundError(
-            f"'{candidate_name}' 지원자의 벡터 스토어를 찾을 수 없습니다.\n"
+            f"벡터 스토어를 찾을 수 없습니다.\n"
             f"경로: {chroma_dir}"
         )
     
@@ -138,19 +137,23 @@ def load_vectorstore(candidate_name: str):
 
 def get_retriever(candidate_name: str, k: int = 7):
     """
-    지원자별 벡터스토어에서 retriever를 생성합니다.
+    메타데이터 필터링을 사용하여 retriever를 생성합니다.
     
     Args:
-        candidate_name: 지원자 이름
+        candidate_name: 지원자 이름 (메타데이터 필터링에 사용)
         k: 검색할 문서 개수 (기본값: 7, 5페이지 CV 최적화)
         
     Returns:
         Retriever 인스턴스
     """
-    vs = load_vectorstore(candidate_name)
+    vs = load_vectorstore()
+    candidate_normalized = normalize_filename(candidate_name)
     return vs.as_retriever(
         search_type="similarity",
-        search_kwargs={"k": k}
+        search_kwargs={
+            "k": k,
+            "filter": {"candidate": candidate_normalized}
+        }
     )
 
 
@@ -190,7 +193,7 @@ def build_rag_chain(candidate_name: str):
     1. 주어진 '지원자 이력서 정보'를 최대한 활용하여 질문에 구체적이고 상세하게 답변하세요.
     2. 질문이 한국어로 되어 있으면 한국어로, 영어로 되어 있으면 영어로 답변하세요. 이력서에 한국어와 영어가 혼용되어 있어도 정확하게 이해하고 답변하세요.
     3. 이력서의 구조(교육, 경력, 프로젝트, 기술스택 등)를 이해하고, 질문에 맞는 섹션의 정보를 찾아 답변하세요.
-    4. **중요**: 질문의 핵심 조건을 정확히 만족하는 정보만 답변에 포함하세요. 예를 들어, "AI를 위한 교육"을 묻는다면 AI와 직접적으로 관련된 교육만 언급하고, 일반적인 교육은 제외하세요.
+    4. **중요**: 질문의 핵심 조건을 정확히 만족하는 정보만 답변에 포함하세요.
     5. 정보가 명확하지 않거나 문서에 없는 내용은 추측하지 말고 솔직하게 "해당 정보는 이력서에 없습니다"라고 답변하세요. 질문의 조건을 만족하지 않는 정보는 언급하지 마세요.
     6. 여러 문서에서 관련 정보를 찾았다면, 시간순서나 중요도에 따라 종합하여 답변하세요.
     7. 날짜, 기간, 회사명, 학교명, 프로젝트명 등 구체적인 정보는 정확하게 언급하세요.

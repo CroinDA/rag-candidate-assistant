@@ -9,6 +9,7 @@ from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
+import chromadb
 
 load_dotenv()
 
@@ -61,13 +62,32 @@ def extract_candidate_name(filename: str) -> str:
     return normalize_filename(candidate)
 
 
-def get_chroma_dir(candidate_name: str) -> str:
+def get_chroma_dir() -> str:
     """
-    지원자별 벡터 DB 경로 반환 (정규화 적용)
-    예: "박광진" -> "vector_store/박광진/chroma_db"
+    단일 벡터 DB 경로 반환
+    예: "vector_store/chroma_db"
     """
-    candidate_normalized = normalize_filename(candidate_name)
-    return os.path.join(CHROMA_BASE_DIR, candidate_normalized, "chroma_db")
+    return os.path.join(CHROMA_BASE_DIR, "chroma_db")
+
+
+def get_candidates_dir() -> str:
+    """
+    지원자 인덱스용 ChromaDB 경로 반환
+    예: "vector_store/candidates_index"
+    """
+    return os.path.join(CHROMA_BASE_DIR, "candidates_index")
+
+
+def get_candidates_collection():
+    """
+    지원자 목록을 관리하는 ChromaDB 컬렉션을 반환합니다.
+    (지원자를 구별하기 위한 가벼운 인덱스)
+    """
+    candidates_dir = get_candidates_dir()
+    os.makedirs(candidates_dir, exist_ok=True)
+    client = chromadb.PersistentClient(path=candidates_dir)
+    collection = client.get_or_create_collection("candidates_index")
+    return collection
 
 
 # ============================================
@@ -159,13 +179,12 @@ def get_embeddings():
     return embeddings
 
 
-def create_vectorstore(chunks: List[Any], candidate_name: str, persist: bool = True) -> Chroma:
+def create_vectorstore(chunks: List[Any], persist: bool = True) -> Chroma:
     """
-    청크들을 임베딩하고 지원자별 Chroma 벡터DB에 저장합니다.
+    청크들을 임베딩하고 단일 Chroma 벡터DB에 저장합니다.
     
     Args:
-        chunks: 임베딩할 청크 리스트
-        candidate_name: 지원자 이름
+        chunks: 임베딩할 청크 리스트 (메타데이터에 candidate 정보 포함)
         persist: 벡터 DB를 디스크에 저장할지 여부
         
     Returns:
@@ -173,7 +192,7 @@ def create_vectorstore(chunks: List[Any], candidate_name: str, persist: bool = T
     """
     embeddings = get_embeddings()
     
-    chroma_dir = get_chroma_dir(candidate_name)
+    chroma_dir = get_chroma_dir()
     os.makedirs(chroma_dir, exist_ok=True)
     
     # 폴더 생성 확인
@@ -196,19 +215,18 @@ def create_vectorstore(chunks: List[Any], candidate_name: str, persist: bool = T
     return vectorstore
 
 
-def add_to_existing_vectorstore(chunks: List[Any], candidate_name: str) -> Chroma:
+def add_to_existing_vectorstore(chunks: List[Any]) -> Chroma:
     """
-    기존 지원자 벡터스토어에 새로운 청크를 추가합니다.
+    기존 벡터스토어에 새로운 청크를 추가합니다.
     
     Args:
-        chunks: 추가할 청크 리스트
-        candidate_name: 지원자 이름
+        chunks: 추가할 청크 리스트 (메타데이터에 candidate 정보 포함)
         
     Returns:
         업데이트된 Chroma 벡터스토어 인스턴스
     """
     embeddings = get_embeddings()
-    chroma_dir = get_chroma_dir(candidate_name)
+    chroma_dir = get_chroma_dir()
     
     # 기존 벡터스토어 로드
     vectorstore = Chroma(
@@ -252,9 +270,10 @@ def process_uploaded_documents(file_paths: List[str], original_filenames: List[s
     total_docs = sum(len(docs) for docs in docs_by_candidate.values())
     print(f"✅ 총 {total_docs} 페이지 로드 완료 ({len(docs_by_candidate)}명의 지원자)\n")
     
-    # 2. 지원자별 처리
+    # 2. 모든 문서를 하나로 합쳐서 처리
     total_chunks = 0
     processed_candidates = []
+    all_chunks = []
     
     for candidate_name, docs in docs_by_candidate.items():
         print(f"\n🔹 지원자: {candidate_name}")
@@ -264,21 +283,37 @@ def process_uploaded_documents(file_paths: List[str], original_filenames: List[s
         chunks = split_documents(docs)
         print(f"  ✅ {len(chunks)}개의 청크 생성 완료")
         
-        # 벡터 스토어 생성 또는 업데이트
-        print("  3️⃣ 벡터 스토어 처리 중...")
-        chroma_dir = get_chroma_dir(candidate_name)
-        
-        if os.path.exists(chroma_dir) and os.listdir(chroma_dir):
-            print(f"  기존 벡터 DB에 추가합니다...")
-            vectorstore = add_to_existing_vectorstore(chunks, candidate_name)
-        else:
-            print(f"  새로운 벡터 DB를 생성합니다...")
-            vectorstore = create_vectorstore(chunks, candidate_name)
-        
-        print(f"  ✅ 벡터 DB 저장 완료: {chroma_dir}")
-        
+        all_chunks.extend(chunks)
         total_chunks += len(chunks)
         processed_candidates.append(candidate_name)
+    
+    # 3. 벡터 스토어 생성 또는 업데이트 (단일 DB)
+    print("\n3️⃣ 벡터 스토어 처리 중...")
+    chroma_dir = get_chroma_dir()
+    
+    if os.path.exists(chroma_dir) and os.listdir(chroma_dir):
+        print(f"  기존 벡터 DB에 추가합니다...")
+        vectorstore = add_to_existing_vectorstore(all_chunks)
+    else:
+        print(f"  새로운 벡터 DB를 생성합니다...")
+        vectorstore = create_vectorstore(all_chunks)
+    
+    print(f"  ✅ 벡터 DB 저장 완료: {chroma_dir}")
+
+    # 4. 지원자 인덱스 업데이트 (메타데이터 기반)
+    print("\n4️⃣ 지원자 인덱스 업데이트 중...")
+    try:
+        candidates_collection = get_candidates_collection()
+        unique_candidates = sorted(set(processed_candidates))
+        if unique_candidates:
+            candidates_collection.upsert(
+                ids=unique_candidates,
+                metadatas=[{"candidate": name} for name in unique_candidates],
+                documents=["" for _ in unique_candidates],
+            )
+        print("  ✅ 지원자 인덱스 업데이트 완료")
+    except Exception as e:
+        print(f"  ⚠️ 지원자 인덱스 업데이트 실패: {e}")
     
     print("\n" + "=" * 60)
     print("✨ 문서 처리 완료!")
