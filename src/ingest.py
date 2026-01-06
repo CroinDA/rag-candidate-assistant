@@ -135,8 +135,8 @@ def split_documents(documents: List[Any]) -> List[Any]:
         청크로 분할된 문서 리스트
     """
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,
-        chunk_overlap=200,
+        chunk_size=1200,  # 800 → 1200 (섹션 단위 보존)
+        chunk_overlap=300,  # 200 → 300 (경계 정보 보존)
         length_function=len,
         separators=["\n\n", "\n", " ", ""]
     )
@@ -146,13 +146,13 @@ def split_documents(documents: List[Any]) -> List[Any]:
 
 def get_embeddings():
     """
-    임베딩 모델을 생성합니다 (GPU 지원).
+    임베딩 모델을 생성합니다 (GPU 지원, 한글/영어 지원)
     
     Returns:
         HuggingFaceEmbeddings 인스턴스
     """
     embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
+        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",  # 다국어 지원 (한/영)
         model_kwargs=EMBEDDING_MODEL_KWARGS,
         encode_kwargs=EMBEDDING_ENCODE_KWARGS
     )
