@@ -1,4 +1,4 @@
-# 🤖 지원자 이력서 기반 RAG 챗봇 (Candidate CV RAG Assistant)
+# 지원자 이력서 기반 RAG 챗봇 (Candidate CV RAG Assistant)
 
 이 프로젝트는 **Streamlit**, **LangChain**, **Ollama**, **ChromaDB**를 기반으로 한 RAG(Retrieval-Augmented Generation) 챗봇(MVP)입니다. 여러 지원자의 이력서(CV)를 업로드하면, 단일 벡터 데이터베이스에 메타데이터로 지원자를 구분하여 저장하고, 질문에 포함된 지원자 이름을 자동으로 인식하여 메타데이터 필터링으로 해당 지원자의 정보만을 기반으로 답변을 제공합니다.
 
@@ -242,6 +242,7 @@ rag-candidate-assistant/
 
 아래와 같은 개선을 통해, 더욱 완성도 높은 챗봇으로 발전시키고자 합니다.
 
+- **응답 속도 개선**: LLM 응답을 토큰 단위로 스트리밍하여 첫 응답까지의 대기 시간을 단축하고, RAG 파이프라인 최적화를 통해 질문-답변 처리 속도를 향상시킵니다.
 - **프롬프트 엔지니어링 고도화**: 프롬프트 추가 최적화를 통해 RAG의 성능을 향상시킵니다.
 - **임베딩 모델 선택 기능**: UI에서 직접 임베딩 모델을 선택할 수 있는 기능을 추가해 사용자가 원하는 성능에 따라 모델을 선택할 수 있도록 합니다.
 - **Mac GPU 가속 지원**: Mac Apple Silicon의 MPS(Metal Performance Shaders)를 활용한 GPU 가속을 지원하도록 합니다. (Docker 없이 로컬 Python 환경에서 실행 시)
