@@ -1,5 +1,6 @@
-# NVIDIA CUDA 12.1 + Ubuntu 22.04 (GPU 가속 지원)
-FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
+# Ubuntu 22.04 (CPU 모드, Mac 호환)
+# GPU 가속이 필요한 경우 docker-compose.yml에서 NVIDIA GPU 설정을 주석 해제하세요
+FROM ubuntu:22.04
 
 # 환경 변수 설정
 ENV DEBIAN_FRONTEND=noninteractive
@@ -14,10 +15,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.10 \
     python3-pip \
     python3.10-venv \
-    poppler-utils \
-    tesseract-ocr \
-    tesseract-ocr-kor \
-    tesseract-ocr-eng \
+    # 향후 OCR 기능 확장 시 사용 예정
+    # poppler-utils \
+    # tesseract-ocr \
+    # tesseract-ocr-kor \
+    # tesseract-ocr-eng \
     build-essential \
     g++ \
     libopenblas-dev \
@@ -52,13 +54,8 @@ RUN mkdir -p vector_store .cache .streamlit && \
 ENV LANG=ko_KR.UTF-8
 ENV LC_ALL=ko_KR.UTF-8
 
-# GPU 환경 변수 설정
-ENV NVIDIA_VISIBLE_DEVICES=all
-ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
-
-# PyTorch CUDA 설정
-ENV CUDA_VISIBLE_DEVICES=0
-ENV TORCH_CUDA_ARCH_LIST="7.0 7.5 8.0 8.6 8.9 9.0"
+# GPU 환경 변수는 docker-compose.yml에서 관리합니다
+# NVIDIA GPU가 있는 경우 docker-compose.yml의 GPU 환경 변수 주석을 해제하세요
 
 # 캐시 디렉토리 설정 (HuggingFace 모델 캐시)
 ENV HF_HOME=/app/.cache

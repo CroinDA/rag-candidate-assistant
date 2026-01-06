@@ -2,7 +2,8 @@
 
 services:
   # ============================================
-  # RAG 챗봇 서비스 (CUDA GPU 지원)
+  # RAG 챗봇 서비스
+  # GPU 가속이 필요한 경우 아래 GPU 설정을 주석 해제하세요
   # ============================================
   rag-assistant:
     # 이미지 이름 지정
@@ -47,10 +48,10 @@ services:
       - OLLAMA_HOST=http://host.docker.internal:11434
       - OLLAMA_MODEL=qwen2.5:14b
       
-      # GPU 설정
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-      - CUDA_VISIBLE_DEVICES=0
+      # GPU 설정 (NVIDIA GPU가 있는 경우에만 주석 해제)
+      # - NVIDIA_VISIBLE_DEVICES=all
+      # - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      # - CUDA_VISIBLE_DEVICES=0
       
       # HuggingFace 캐시 설정
       - HF_HOME=/app/.cache
