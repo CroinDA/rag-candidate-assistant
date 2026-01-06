@@ -98,19 +98,7 @@ with st.sidebar:
         - **GPU**: CUDA 12.1 지원
         """
     )
-    
-    # 벡터 DB 초기화 버튼
-    if st.button("🗑️ 전체 DB 초기화"):
-        import shutil
-        vector_base_dir = "vector_store"
-        if os.path.exists(vector_base_dir):
-            shutil.rmtree(vector_base_dir)
-            os.makedirs(vector_base_dir, exist_ok=True)
-            st.session_state["vectorstore_ready"] = False
-            st.session_state["uploaded_files_list"] = []
-            st.session_state["messages"] = []
-            st.success("✅ 모든 벡터 DB가 초기화되었습니다.")
-            st.rerun()
+
 
 # 2. 메인 채팅 영역
 if not st.session_state["vectorstore_ready"]:
