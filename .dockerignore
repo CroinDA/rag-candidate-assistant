@@ -12,7 +12,6 @@ build/
 venv/
 env/
 ENV/
-baseball/
 
 # IDE
 .vscode/
@@ -42,6 +41,9 @@ cache/
 
 # Vector Store (will be mounted as volume)
 vector_store/
+
+# Documentation (not needed in container)
+docs/
 
 # Environment
 .env
