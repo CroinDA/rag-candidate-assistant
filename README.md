@@ -119,7 +119,7 @@
 
 ### 1. 지원자 CV 업로드
 
-![웹 UI 스크린샷](docs/images/ui-screenshot.png)
+![웹 UI 스크린샷](docs/images/ui_screenshot.png)
 
 1. 웹 UI의 왼쪽 사이드바에서 "문서 업로드" 섹션으로 이동합니다.
 2. PDF 파일을 업로드합니다. **파일명 형식**: `{지원자명}_CV.pdf`
